@@ -12,7 +12,7 @@
   <body>
     <div class="container my-5">
       <div class="formContainer my-5">
-        <form action="" method="POST">
+        <form id="formVideoRequest">
           <div class="row">
             <div class="col-md">
               <div class="form-group">
@@ -125,5 +125,39 @@
         </div>
       </div>
     </div>
+    <script>
+
+      document.addEventListener('DOMContentLoaded', function () {
+
+        const formVidReq = document.getElementById('formVideoRequest');
+        formVidReq.addEventListener('submit', (e) => {
+          e.preventDefault();
+          fetch('http://localhost:7777/video-request', {
+            method: 'POST',
+            body: JSON.stringify({
+              author_name: 'soso',
+              author_email: 'soso@gmsil.com',
+              topic_title: 'eye',
+              target_level: 'beginner',
+              topic_details: 'eyeeyey',
+              expected_result: 'dfsdfdsf',
+            })
+          }).then((data) => {
+            console.log(data);
+            
+          })
+
+        })
+
+      })
+      
+
+    </script>
+
+
+
+
+
+
   </body>
 </html>

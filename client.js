@@ -1,6 +1,13 @@
 const listOfRequestsElm = document.getElementById('listOfRequests');
-let sortBy = 'newFirst';
-let searchTerm = '';
+
+
+const state = {
+    sortBy: 'newFirst',
+    searchTerm: '',
+    userId: ''
+
+}
+
 function renderSingleVidReq(vidInfo, isPrepend = false) {
 
     const videosListTemplate = `
@@ -114,21 +121,72 @@ function debounce(fn, time) {
     }
 }
 
+
+function checkValidity(formData) {
+    
+    const name = formData.get('author_name');
+    const email = formData.get('author_email');
+    const topic = formData.get('topic_title');
+    const topicDetails = formData.get('topic_details');
+
+    // if(!name) {
+    //     document.querySelector('[name=author_name]').classList.add('is-invalid');
+        
+    // }
+
+    // const emailPattern = /(^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Za-z]{2,}$|^(?![\s\S]))/
+    // if(!email || !emailPattern.test(email)) {
+    //     document.querySelector('[name=author_email]').classList.add('is-invalid');
+        
+    // }
+    if(!topic) {
+        document.querySelector('[name=topic_title]').classList.add('is-invalid');
+        
+    }
+    if(!topicDetails) {
+        document.querySelector('[name=topic_details]').classList.add('is-invalid');
+        
+    }
+
+    const allInvalidElms = document.getElementById('formVideoRequest').querySelectorAll('.is-invalid');
+    if(allInvalidElms.length) {
+        allInvalidElms.forEach(elm => {
+            elm.addEventListener('input', function() {
+                this.classList.remove('is-invalid');
+            });
+        });
+        return false;
+    }
+
+    return true;
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     
-    loadAllVidReq();
     const sortByElms = document.querySelectorAll('[id*=sort_by_]');
     const searchBoxElm = document.getElementById('search_box');
     const formVidReqElm = document.getElementById('formVideoRequest');
+
+    const formLoginElm = document.querySelector('.form-login');
+    const appContentElm = document.querySelector('.app-content');
+
+    if(window.location.search) {
+        state.userId = new URLSearchParams(window.location.search).get('id');
+        formLoginElm.classList.add('d-none');
+        appContentElm.classList.remove('d-none');
+ 
+   }
+    
+    loadAllVidReq();
 
     sortByElms.forEach(elm => {
         elm.addEventListener('click', function (e) {
             e.preventDefault();
 
-            sortBy = this.querySelector('input').value;
-            loadAllVidReq( sortBy, searchTerm );
+            state.sortBy = this.querySelector('input').value;
+            loadAllVidReq( state.sortBy, state.searchTerm );
             this.classList.add('active');
-            if ( sortBy === 'topVotedFirst' ) {
+            if ( state.sortBy === 'topVotedFirst' ) {
                 document.getElementById('sort_by_new').classList.remove('active');
             } else {
                 document.getElementById('sort_by_top').classList.remove('active');
@@ -139,8 +197,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     searchBoxElm.addEventListener('input', 
     debounce((e) => {
-        searchTerm = e.target.value;
-        loadAllVidReq( sortBy, searchTerm );
+        state.searchTerm = e.target.value;
+        loadAllVidReq( state.sortBy, state.searchTerm );
     }, 300)
     )
 
@@ -148,6 +206,12 @@ document.addEventListener('DOMContentLoaded', function () {
     formVidReqElm.addEventListener('submit', (e) => {
         e.preventDefault();
         const formData = new FormData(formVidReqElm);
+
+        formData.append('author_id', state.userId)
+
+        const isValid = checkValidity(formData);
+        if(!isValid) return;
+
         fetch('http://localhost:7777/video-request', {
                 method: 'POST',
                 body: formData,

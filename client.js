@@ -16,18 +16,21 @@ function renderSingleVidReq(vidInfo, isPrepend = false) {
     const videosListTemplate = `
     <div class="card mb-3"> ${ state.isSuperUser ?
 `    <div class="card-header d-flex justify-content-between">
-    <select>
+    <select id="admin_change_status_${vidInfo._id}">
       <option value="new">new</option>
       <option value="planned">planned</option>
       <option value="done">done</option>
     </select>
-    <div class="input-group ml-2 mr-5">
-      <input type="text" class="form-control" placeholder="paste youtube video here">
+    <div class="input-group ml-2 mr-5 ${vidInfo.status != 'done' ? 'd-none' : '' }" id="admin_vid_res_container_${vidInfo._id}" >
+      <input type="text" id="admin_vid_res_${vidInfo._id}" 
+      class="form-control" placeholder="paste youtube video here">
       <div class="input-group-append">
-        <button class="btn btn-outline-secondary" type="button">Save</button>
+        <button id="admin_save_res_vid_${vidInfo._id}"
+        class="btn btn-outline-secondary" type="button">Save</button>
       </div>
     </div>
-    <button class="btn btn-danger">Delete</button>
+    <button id="admin_delete_res_vid_${vidInfo._id}"
+    class="btn btn-danger">Delete</button>
   
   </div>` : ``}
         <div class="card-body d-flex justify-content-between flex-row">
@@ -49,7 +52,15 @@ function renderSingleVidReq(vidInfo, isPrepend = false) {
           </div>
           <div class="card-footer d-flex flex-row justify-content-between">
             <div>
-              <span class="text-info">${vidInfo.status.toUpperCase()}</span>
+              <span class="${
+                    vidInfo.status === 'done'
+                    ? 'text-success' 
+                    : vidInfo.status === 'planned'
+                    ? 'text-primary'
+                    : ''
+                }">${vidInfo.status.toUpperCase()} 
+                ${vidInfo.status === 'done' 
+                ? `on ${new Date(vidInfo.video_ref.date).toLocaleDateString()}` : ''}</span>
               &bullet; added by <strong>${vidInfo.author_name}</strong> on
               <strong>${new Date(vidInfo.submit_date).toLocaleDateString()}</strong>
             </div>
@@ -74,12 +85,70 @@ function renderSingleVidReq(vidInfo, isPrepend = false) {
 
     }
 
+
+    const adminChangeStatusElm= document.getElementById(`admin_change_status_${vidInfo._id}`);
+    const adminVidResElm= document.getElementById(`admin_vid_res_${vidInfo._id}`);
+    const adminSaveVidResElm= document.getElementById(`admin_save_res_vid_${vidInfo._id}`);
+    const adminDeleteVidResElm= document.getElementById(`admin_delete_res_vid_${vidInfo._id}`);
+    const adminVidResContainerElm= document.getElementById(`admin_vid_res_container_${vidInfo._id}`);
+
+    if( state.isSuperUser) {
+    adminChangeStatusElm.value = vidInfo.status;
+    adminVidResElm.value = vidInfo.video_ref.link;
+
+    adminChangeStatusElm.addEventListener('change', (e) => {
+        if(e.target.value === 'done') {
+            adminVidResContainerElm.classList.remove('d-none');
+
+        } else {
+            changeVidStatus(vidInfo._id, e.target.value) 
+        }
+    });
+
+    adminSaveVidResElm.addEventListener('click', (e) => {
+        e.preventDefault();
+        if(!adminVidResElm.value) {
+
+            adminVidResElm.classList.add('is-invalid');
+            adminVidResElm.addEventListener('input', () => {
+                adminVidResElm.classList.remove('is-invalid');
+            });
+            return;
+
+        }
+        changeVidStatus(vidInfo._id, 'done', adminVidResElm.value)
+        
+    });
+
+    adminDeleteVidResElm.addEventListener('click', (e) => {
+        e.preventDefault();
+        const isSure = confirm(`Are you sure delete ${vidInfo.topic_title}`);
+
+        if(!isSure) {
+            return;
+        }
+
+        fetch('http://localhost:7777/video-request/', {
+            method: 'DELETE',
+            headers: {'content-Type' : 'application/json'},
+            body: JSON.stringify({ id: vidInfo._id })
+        })
+        .then((res => res.json()))
+        .then((data) => window.location.reload());
+        
+
+    })
+}
     applyVoteStyle(vidInfo._id, vidInfo.votes);
 
     const voteScoreElm = document.getElementById(`score_vote_${vidInfo._id}`);
     const votesElms = document.querySelectorAll(`[id^=votes_][id$=_${vidInfo._id}]`);
 
     votesElms.forEach(elm => {
+
+        if (state.isSuperUser) {
+            return;
+        }
         elm.addEventListener('click', function (e) {
             e.preventDefault();
 
@@ -142,7 +211,32 @@ function renderSingleVidReq(vidInfo, isPrepend = false) {
 */
 }
 
+function changeVidStatus (id, status, resVideo = '') {
+    fetch('http://localhost:7777/video-request/', {
+            method: 'PUT',
+            headers: {'content-Type' : 'application/json'},
+            body: JSON.stringify({
+                id,
+                status,
+                resVideo,
+            })
+        })
+        .then((res => res.json()))
+        .then((data) => window.location.reload());
+}
+
 function applyVoteStyle(video_id, votes_list, vote_type) {
+    const voteUpsElm = document.getElementById(`votes_ups_${video_id}`);
+    const voteDownsElm = document.getElementById(`votes_downs_${video_id}`);
+
+    if(state.isSuperUser) {
+        voteUpsElm.style.opacity = 0.5;
+        voteUpsElm.style.cursor = 'not-allowed';
+        voteDownsElm.style.opacity = 0.5;
+        voteDownsElm.style.cursor = 'not-allowed';
+        return;
+
+    }
 
     if (!vote_type) {
         if (votes_list.ups.includes(state.userId)) {
@@ -153,8 +247,6 @@ function applyVoteStyle(video_id, votes_list, vote_type) {
             return;
         }
     }
-    const voteUpsElm = document.getElementById(`votes_ups_${video_id}`);
-    const voteDownsElm = document.getElementById(`votes_downs_${video_id}`);
 
     const voteDirElm = vote_type === 'ups' ? voteUpsElm : voteDownsElm;
     const otherDirElm = vote_type === 'ups' ? voteDownsElm : voteUpsElm;

@@ -5,6 +5,7 @@ const SUPER_USER_ID = '19900411'
 const state = {
     sortBy: 'newFirst',
     searchTerm: '',
+    filterBy: 'all',
     userId: '',
     isSuperUser: false
 
@@ -44,6 +45,10 @@ function renderSingleVidReq(vidInfo, isPrepend = false) {
                 }
               </p>
             </div>
+            ${vidInfo.status === 'done' ?
+            `<div class="ml-auto mr-3">
+              <iframe src="https://www.youtube.com/embed/${vidInfo.video_ref.link}" frameborder="0" width="240" height="135" allowfullscreen></iframe>
+            </div>` : '' }
             <div class="d-flex flex-column text-center">
               <a id="votes_ups_${vidInfo._id}" class="btn btn-link">🔺</a>
               <h3 id="score_vote_${vidInfo._id}">${vidInfo.votes.ups.length - vidInfo.votes.downs.length}</h3>
@@ -139,14 +144,14 @@ function renderSingleVidReq(vidInfo, isPrepend = false) {
 
     })
 }
-    applyVoteStyle(vidInfo._id, vidInfo.votes);
+    applyVoteStyle(vidInfo._id, vidInfo.votes, vidInfo.status === 'done');
 
     const voteScoreElm = document.getElementById(`score_vote_${vidInfo._id}`);
     const votesElms = document.querySelectorAll(`[id^=votes_][id$=_${vidInfo._id}]`);
 
     votesElms.forEach(elm => {
 
-        if (state.isSuperUser) {
+        if (state.isSuperUser || vidInfo.status === 'done') {
             return;
         }
         elm.addEventListener('click', function (e) {
@@ -169,7 +174,7 @@ function renderSingleVidReq(vidInfo, isPrepend = false) {
                 .then((data) => {
                     voteScoreElm.innerText = data.ups.length - data.downs.length;
 
-                    applyVoteStyle(id, data, vote_type);
+                    applyVoteStyle(id, data, vidInfo.status === 'done', vote_type);
 
                 })
 
@@ -225,11 +230,11 @@ function changeVidStatus (id, status, resVideo = '') {
         .then((data) => window.location.reload());
 }
 
-function applyVoteStyle(video_id, votes_list, vote_type) {
+function applyVoteStyle(video_id, votes_list, isDisabled, vote_type) {
     const voteUpsElm = document.getElementById(`votes_ups_${video_id}`);
     const voteDownsElm = document.getElementById(`votes_downs_${video_id}`);
 
-    if(state.isSuperUser) {
+    if(isDisabled) {
         voteUpsElm.style.opacity = 0.5;
         voteUpsElm.style.cursor = 'not-allowed';
         voteDownsElm.style.opacity = 0.5;
@@ -261,9 +266,13 @@ function applyVoteStyle(video_id, votes_list, vote_type) {
     }
 }
 
-function loadAllVidReq(sortBy = 'newFirst', searchTerm = '') {
+function loadAllVidReq(
+    sortBy = 'newFirst', 
+    searchTerm = '', 
+    filterBy= 'all'
+    ) {
     /* Get request */
-    fetch(`http://localhost:7777/video-request?sortBy=${sortBy}&searchTerm=${searchTerm}`)
+    fetch(`http://localhost:7777/video-request?sortBy=${sortBy}&searchTerm=${searchTerm}&filterBy=${filterBy}`)
         .then((data) => data.json())
         .then((data) => {
             listOfRequestsElm.innerHTML = '';
@@ -328,10 +337,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const sortByElms = document.querySelectorAll('[id*=sort_by_]');
     const searchBoxElm = document.getElementById('search_box');
+    const filterByElms = document.querySelectorAll('[id^=filter_by_]')
     const formVidReqElm = document.getElementById('formVideoRequest');
-
     const formLoginElm = document.querySelector('.form-login');
     const appContentElm = document.querySelector('.app-content');
+
+    
 
     if (window.location.search) {
         state.userId = new URLSearchParams(window.location.search).get('id');
@@ -347,12 +358,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
     loadAllVidReq();
 
+    filterByElms.forEach(elm => {
+        elm.addEventListener('click', function(e) {
+            e.preventDefault();
+            state.filterBy = e.target.getAttribute('id').split('-')[2];
+
+            filterByElms.forEach(option =>
+                {
+                option.classList.remove('active');
+                this.classList.add('active')
+
+            })
+
+            loadAllVidReq(state.sortBy, state.searchTerm, state.filterBy);
+        })
+    })
+
     sortByElms.forEach(elm => {
         elm.addEventListener('click', function (e) {
             e.preventDefault();
 
             state.sortBy = this.querySelector('input').value;
-            loadAllVidReq(state.sortBy, state.searchTerm);
+            loadAllVidReq(state.sortBy, state.searchTerm, state.filterBy);
             this.classList.add('active');
             if (state.sortBy === 'topVotedFirst') {
                 document.getElementById('sort_by_new').classList.remove('active');
@@ -366,7 +393,7 @@ document.addEventListener('DOMContentLoaded', function () {
     searchBoxElm.addEventListener('input',
         debounce((e) => {
             state.searchTerm = e.target.value;
-            loadAllVidReq(state.sortBy, state.searchTerm);
+            loadAllVidReq(state.sortBy, state.searchTerm, state.filterBy);
         }, 300)
     )
 

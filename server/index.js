@@ -29,20 +29,21 @@ app.post('/video-request', upload.none(), async (req, res, next) => {
 app.get('/video-request', async (req, res, next) => {
   const { sortBy, searchTerm, filterBy } = req.query;
   let data;
-  if ( searchTerm ) {
-    data = await VideoRequestData.searchRequests( searchTerm, filterBy );
+  if (searchTerm) {
+    data = await VideoRequestData.searchRequests(searchTerm, filterBy);
   } else {
     data = await VideoRequestData.getAllVideoRequests(filterBy);
   }
+
   if (sortBy === 'topVotedFirst') {
     data = data.sort((prev, next) => {
       if (
-        prev.votes.ups - prev.votes.downs > 
+        prev.votes.ups - prev.votes.downs >
         next.votes.ups - next.votes.downs
       ) {
-        return -1
+        return -1;
       } else {
-        return 1
+        return 1;
       }
     });
   }
@@ -66,7 +67,11 @@ app.use(express.json());
 
 app.put('/video-request/vote', async (req, res, next) => {
   const { id, vote_type, user_id } = req.body;
-  const response = await VideoRequestData.updateVoteForRequest(id, vote_type, user_id);
+  const response = await VideoRequestData.updateVoteForRequest(
+    id,
+    vote_type,
+    user_id
+  );
   res.send(response.votes);
   next();
 });

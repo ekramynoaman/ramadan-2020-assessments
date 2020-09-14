@@ -1,11 +1,11 @@
 const VideoRequest = require('./../models/video-requests.model');
-const userData = require('./user.data');
 const User = require('./../models/user.model');
+
 module.exports = {
-  createRequest: async(vidRequestData) => {
-    const authorId = vidRequestData.author_id;     
-    if(authorId) {
-      const userObj = await User.findOne({_id: authorId});
+  createRequest: async (vidRequestData) => {
+    const authorId = vidRequestData.author_id;
+    if (authorId) {
+      const userObj = await User.findOne({ _id: authorId });
       vidRequestData.author_name = userObj.author_name;
       vidRequestData.author_email = userObj.author_email;
     }
@@ -14,12 +14,12 @@ module.exports = {
   },
 
   getAllVideoRequests: (filterBy) => {
-    const filter = filterBy === 'all' ? {} : {status: filterBy };
+    const filter = filterBy === 'all' ? {} : { status: filterBy };
     return VideoRequest.find(filter).sort({ submit_date: '-1' });
   },
 
   searchRequests: (topic, filterBy) => {
-    const filter = filterBy === 'all' ? {} : {status: filterBy };
+    const filter = filterBy === 'all' ? {} : { status: filterBy };
     return VideoRequest.find({
       topic_title: { $regex: topic, $options: 'i' },
       ...filter,
@@ -49,15 +49,15 @@ module.exports = {
     const oldVoteList = oldRequest.votes[vote_type];
     const oldOtherList = oldRequest.votes[other_type];
 
-    if(!oldVoteList.includes(user_id)) {
+    if (!oldVoteList.includes(user_id)) {
       oldVoteList.push(user_id);
     } else {
       oldVoteList.splice(user_id);
     }
 
-    if(oldOtherList.includes(user_id)) {
+    if (oldOtherList.includes(user_id)) {
       oldOtherList.splice(user_id);
-    } 
+    }
 
     return VideoRequest.findByIdAndUpdate(
       { _id: id },
@@ -67,7 +67,7 @@ module.exports = {
           [other_type]: oldOtherList,
         },
       },
-      {new: true}
+      { new: true }
     );
   },
 
